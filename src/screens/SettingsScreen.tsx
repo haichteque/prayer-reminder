@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert } from 'react-native';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { schedulePrayerNotifications } from '../services/NotificationService';
+import { schedulePrayerNotifications, testAlarm } from '../services/NotificationService';
 
 export default function SettingsScreen() {
   const { 
@@ -16,6 +16,11 @@ export default function SettingsScreen() {
       await schedulePrayerNotifications(location, madhab, reminderMode, offsets, 7);
       Alert.alert("Success", "Settings applied and alarms rescheduled.");
     }
+  };
+
+  const handleTestAlarm = async () => {
+    await testAlarm();
+    Alert.alert("Test Alarm Triggered", "An alarm should pop up in exactly 5 seconds. Please put the app in the background (or leave it open) to test.");
   };
 
   return (
@@ -51,6 +56,13 @@ export default function SettingsScreen() {
             thumbColor={'#000'}
           />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>[ DIAGNOSTICS ]</Text>
+        <TouchableOpacity style={styles.testButton} onPress={handleTestAlarm}>
+          <Text style={styles.testButtonText}>RUN_ALARM_TEST</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSaveAndReschedule}>
@@ -131,6 +143,21 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#000000',
     fontSize: 18,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+  },
+  testButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#00FF41',
+    padding: 15,
+    borderRadius: 4,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  testButtonText: {
+    color: '#00FF41',
+    fontSize: 16,
     fontFamily: 'monospace',
     fontWeight: 'bold',
   },
