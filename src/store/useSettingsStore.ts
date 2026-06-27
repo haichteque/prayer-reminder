@@ -25,11 +25,13 @@ interface SettingsState {
   reminderMode: ReminderMode;
   offsets: PrayerOffsets;
   use24HourClock: boolean;
+  selectedSound: string;
   location: LocationData | null;
   setMadhab: (madhab: Madhab) => void;
   setReminderMode: (mode: ReminderMode) => void;
   setOffset: (prayer: keyof PrayerOffsets, minutes: number) => void;
   setUse24HourClock: (use24Hour: boolean) => void;
+  setSelectedSound: (sound: string) => void;
   setLocation: (location: LocationData | null) => void;
 }
 
@@ -47,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
         Isha: 15,
       },
       use24HourClock: false,
+      selectedSound: 'default',
       location: null,
       setMadhab: (madhab) => set({ madhab }),
       setReminderMode: (reminderMode) => set({ reminderMode }),
@@ -54,6 +57,7 @@ export const useSettingsStore = create<SettingsState>()(
         offsets: { ...state.offsets, [prayer]: minutes } 
       })),
       setUse24HourClock: (use24HourClock) => set({ use24HourClock }),
+      setSelectedSound: (selectedSound) => set({ selectedSound }),
       setLocation: (location) => set({ location }),
     }),
     {

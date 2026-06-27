@@ -16,7 +16,8 @@ export default function HomeScreen({ navigation }: Props) {
     madhab, 
     reminderMode, setReminderMode, 
     offsets, setOffset,
-    use24HourClock
+    use24HourClock,
+    selectedSound
   } = useSettingsStore();
   
   const [prayerTimes, setPrayerTimes] = useState<DailyPrayerTimes | null>(null);
@@ -43,7 +44,7 @@ export default function HomeScreen({ navigation }: Props) {
       };
       setLocation(newLoc);
 
-      await schedulePrayerNotifications(newLoc, madhab, reminderMode, offsets, 7);
+      await schedulePrayerNotifications(newLoc, madhab, reminderMode, offsets, selectedSound, 7);
       setLoading(false);
     })();
   }, []);
@@ -57,9 +58,9 @@ export default function HomeScreen({ navigation }: Props) {
   // Reschedule whenever mode or offsets change
   useEffect(() => {
     if (location) {
-      schedulePrayerNotifications(location, madhab, reminderMode, offsets, 7);
+      schedulePrayerNotifications(location, madhab, reminderMode, offsets, selectedSound, 7);
     }
-  }, [reminderMode, offsets]);
+  }, [reminderMode, offsets, selectedSound]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { 

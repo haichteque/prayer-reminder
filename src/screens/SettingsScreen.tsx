@@ -1,31 +1,58 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { schedulePrayerNotifications, testAlarm } from '../services/NotificationService';
+
+const SOUNDS = ['default', 'beep', 'chime', 'digital', 'echo', 'matrix'];
 
 export default function SettingsScreen() {
   const { 
     madhab, setMadhab, 
     use24HourClock, setUse24HourClock,
     reminderMode, offsets,
+    selectedSound, setSelectedSound,
     location 
   } = useSettingsStore();
 
   const handleSaveAndReschedule = async () => {
     if (location) {
-      await schedulePrayerNotifications(location, madhab, reminderMode, offsets, 7);
+      await schedulePrayerNotifications(location, madhab, reminderMode, offsets, selectedSound, 7);
       Alert.alert("Success", "Settings applied and alarms rescheduled.");
     }
   };
 
   const handleTestAlarm = async () => {
-    await testAlarm();
+    await testAlarm(selectedSound);
     Alert.alert("Test Alarm Triggered", "An alarm should pop up in exactly 5 seconds. Please put the app in the background (or leave it open) to test.");
   };
 
+  const handleSoundSelect = async (sound: string) => {
+    setSelectedSound(sound);
+    // Play a preview immediately
+    await testAlarm(sound);
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.header}>SYSTEM_CONFIG</Text>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>[ ALARM_SOUND ]</Text>
+        <View style={styles.soundGrid}>
+          {SOUNDS.map((sound) => (
+            <TouchableOpacity 
+              key={sound}
+              style={[styles.soundButton, selectedSound === sound && styles.soundButtonActive]}
+              onPress={() => handleSoundSelect(sound)}
+            >
+              <Text style={[styles.soundButtonText, selectedSound === sound && styles.soundButtonTextActive]}>
+                {sound.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.helperText}>Selecting a sound will play a brief 5-second preview alarm.</Text>
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>[ ASR_CALCULATION_METHOD ]</Text>
@@ -68,15 +95,18 @@ export default function SettingsScreen() {
       <TouchableOpacity style={styles.saveButton} onPress={handleSaveAndReschedule}>
         <Text style={styles.saveButtonText}>EXECUTE_UPDATE</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#000000',
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40,
   },
   header: {
     fontSize: 28,
@@ -94,6 +124,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 15,
     color: '#00FF41',
+  },
+  soundGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  soundButton: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#00FF41',
+    borderRadius: 4,
+    alignItems: 'center',
+    backgroundColor: '#000',
+    minWidth: '45%',
+  },
+  soundButtonActive: {
+    backgroundColor: '#00FF41',
+  },
+  soundButtonText: {
+    color: '#00FF41',
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+  },
+  soundButtonTextActive: {
+    color: '#000000',
+  },
+  helperText: {
+    color: '#00FF41',
+    opacity: 0.8,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    marginTop: 10,
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -137,8 +199,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 4,
     alignItems: 'center',
-    marginTop: 'auto',
-    marginBottom: 20,
+    marginTop: 20,
   },
   saveButtonText: {
     color: '#000000',

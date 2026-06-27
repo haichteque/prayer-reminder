@@ -20,6 +20,7 @@ TaskManager.defineTask(BACKGROUND_PRAYER_SYNC_TASK, async () => {
       store.madhab,
       store.reminderMode,
       store.offsets,
+      store.selectedSound,
       7 // Schedule for the next 7 days
     );
 

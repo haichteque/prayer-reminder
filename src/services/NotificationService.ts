@@ -7,23 +7,25 @@ import notifee, {
 import { getPrayerTimesForDate } from './PrayerTimeService';
 import { LocationData, Madhab, ReminderMode, PrayerOffsets } from '../store/useSettingsStore';
 
-const ALARM_CHANNEL_ID = 'prayer-alarms-1';
-
 export async function requestNotificationPermission() {
   const settings = await notifee.requestPermission();
   return settings.authorizationStatus >= 1;
 }
 
-export async function createNotificationChannel() {
+export async function createNotificationChannel(sound: string) {
+  const channelId = `prayer-alarms-${sound}`;
+  
   await notifee.createChannel({
-    id: ALARM_CHANNEL_ID,
-    name: 'Prayer Alarms',
+    id: channelId,
+    name: `Prayer Alarms (${sound})`,
     importance: AndroidImportance.HIGH,
     visibility: AndroidVisibility.PUBLIC,
     vibration: true,
-    sound: 'default',
+    sound: sound === 'default' ? 'default' : sound,
     bypassDnd: true,
   });
+
+  return channelId;
 }
 
 /**
@@ -34,11 +36,12 @@ export async function schedulePrayerNotifications(
   madhab: Madhab,
   reminderMode: ReminderMode,
   offsets: PrayerOffsets,
+  selectedSound: string = 'default',
   daysToSchedule: number = 7
 ) {
   // Clear previously scheduled notifications
   await notifee.cancelAllNotifications();
-  await createNotificationChannel();
+  const channelId = await createNotificationChannel(selectedSound);
 
   const now = new Date();
 
@@ -80,7 +83,7 @@ export async function schedulePrayerNotifications(
               ? `It is now time for ${prayer.name}.`
               : `${prayer.name} is in ${offset} minutes.`,
             android: {
-              channelId: ALARM_CHANNEL_ID,
+              channelId: channelId,
               pressAction: {
                 id: 'default',
               },
@@ -101,8 +104,8 @@ export async function schedulePrayerNotifications(
 /**
  * Triggers an immediate test alarm (in 5 seconds) so the user can verify it works.
  */
-export async function testAlarm() {
-  await createNotificationChannel();
+export async function testAlarm(selectedSound: string = 'default') {
+  const channelId = await createNotificationChannel(selectedSound);
   
   const trigger: TimestampTrigger = {
     type: TriggerType.TIMESTAMP,
@@ -115,7 +118,7 @@ export async function testAlarm() {
       title: 'SYSTEM_TEST_ALARM',
       body: 'This is a test of the alarm system.',
       android: {
-        channelId: ALARM_CHANNEL_ID,
+        channelId: channelId,
         pressAction: {
           id: 'default',
         },

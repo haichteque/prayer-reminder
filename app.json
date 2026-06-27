@@ -36,11 +36,19 @@
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "android": {}
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
-      ]
+      ],
+      "./withAndroidSounds",
+      "./withNotifeeMaven"
     ],
     "extra": {
       "eas": {
