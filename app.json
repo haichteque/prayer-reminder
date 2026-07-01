@@ -2,6 +2,7 @@
   "expo": {
     "name": "prayer-reminder",
     "slug": "prayer-reminder",
+    "scheme": "prayer-reminder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -48,7 +49,9 @@
         }
       ],
       "./withAndroidSounds",
-      "./withNotifeeMaven"
+      "./withNotifeeMaven",
+      "./withProguard",
+      "./withKotlinReflect"
     ],
     "extra": {
       "eas": {
