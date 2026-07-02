@@ -3,6 +3,7 @@ import notifee, {
   AndroidVisibility,
   TimestampTrigger,
   TriggerType,
+  AndroidCategory,
 } from '@notifee/react-native';
 import { getPrayerTimesForDate } from './PrayerTimeService';
 import { LocationData, Madhab, ReminderMode, PrayerOffsets } from '../store/useSettingsStore';
@@ -92,6 +93,8 @@ export async function schedulePrayerNotifications(
               },
               autoCancel: false,
               ongoing: true,
+              loopSound: true,
+              category: AndroidCategory.ALARM,
             },
           },
           trigger
@@ -127,6 +130,8 @@ export async function testAlarm(selectedSound: string = 'default') {
         },
         autoCancel: false,
         ongoing: true,
+        loopSound: true,
+        category: AndroidCategory.ALARM,
       },
     },
     trigger

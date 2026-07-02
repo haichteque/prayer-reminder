@@ -51,7 +51,9 @@
       "./withAndroidSounds",
       "./withNotifeeMaven",
       "./withProguard",
-      "./withKotlinReflect"
+      "./withKotlinReflect",
+      "expo-splash-screen",
+      "expo-audio"
     ],
     "extra": {
       "eas": {
