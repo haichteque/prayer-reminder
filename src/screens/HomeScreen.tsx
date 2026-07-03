@@ -4,7 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { useSettingsStore, PrayerOffsets } from '../store/useSettingsStore';
 import { getPrayerTimesForDate, DailyPrayerTimes } from '../services/PrayerTimeService';
-import { schedulePrayerNotifications } from '../services/NotificationService';
+import { schedulePrayerNotifications, requestNotificationPermission, checkExactAlarmPermission } from '../services/NotificationService';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -49,6 +49,18 @@ export default function HomeScreen({ navigation }: Props) {
         alert('Permission to access location was denied');
         setLoading(false);
         return;
+      }
+
+      // Add a tiny delay to ensure the OS has fully dismissed the location prompt
+      // before showing the notification prompt, preventing race conditions.
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const notifGranted = await requestNotificationPermission();
+      if (!notifGranted) {
+        console.warn('Notification permissions not granted');
+      } else {
+        // If they granted basic notifications, check if the OS blocked exact alarms (Android 14+)
+        await checkExactAlarmPermission();
       }
 
       let currentLoc;

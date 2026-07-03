@@ -4,6 +4,7 @@ import notifee, {
   TimestampTrigger,
   TriggerType,
   AndroidCategory,
+  AndroidNotificationSetting,
 } from '@notifee/react-native';
 import { getPrayerTimesForDate } from './PrayerTimeService';
 import { LocationData, Madhab, ReminderMode, PrayerOffsets, ManualPrayerTimes } from '../store/useSettingsStore';
@@ -13,8 +14,26 @@ export async function requestNotificationPermission() {
   return settings.authorizationStatus >= 1;
 }
 
+export async function checkExactAlarmPermission() {
+  const settings = await notifee.getNotificationSettings();
+  if (settings.android.alarm === AndroidNotificationSetting.DISABLED) {
+    import('react-native').then(({ Alert }) => {
+      Alert.alert(
+        "Alarms & Reminders Disabled",
+        "Your device has blocked exact alarms for this app. Please open settings and allow 'Alarms & reminders' for alarms to work.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => notifee.openAlarmPermissionSettings() }
+        ]
+      );
+    });
+    return false;
+  }
+  return true;
+}
+
 export async function createNotificationChannel(sound: string) {
-  const channelId = `prayer-alarms-${sound}`;
+  const channelId = `prayer-alarms-${sound}-v3`;
   
   await notifee.createChannel({
     id: channelId,
@@ -78,31 +97,34 @@ export async function schedulePrayerNotifications(
         const trigger: TimestampTrigger = {
           type: TriggerType.TIMESTAMP,
           timestamp: alarmTime.getTime(),
+          alarmManager: {
+            allowWhileIdle: true,
+          },
         };
 
-        await notifee.createTriggerNotification(
-          {
-            id: `prayer-${prayer.name.toLowerCase()}-${targetDate.toISOString()}`,
-            title: `Time for ${prayer.name} Prayer`,
-            body: reminderMode === 'Auto'
-              ? `It is now time for ${prayer.name}.`
-              : `It is now time for ${prayer.name} (Manual Mode).`,
-            android: {
-              channelId: channelId,
-              pressAction: {
-                id: 'default',
+        try {
+          await notifee.createTriggerNotification(
+            {
+              id: `prayer-${prayer.name.toLowerCase()}-${targetDate.toISOString()}`,
+              title: `Time for ${prayer.name} Prayer`,
+              body: reminderMode === 'Auto'
+                ? `It is now time for ${prayer.name}.`
+                : `It is now time for ${prayer.name} (Manual Mode).`,
+              android: {
+                channelId: channelId,
+                pressAction: {
+                  id: 'default',
+                },
               },
-              fullScreenAction: {
-                id: 'default',
-              },
-              autoCancel: false,
-              ongoing: true,
-              loopSound: true,
-              category: AndroidCategory.ALARM,
             },
-          },
-          trigger
-        );
+            trigger
+          );
+        } catch (err: any) {
+          console.error("Failed to schedule trigger for", prayer.name, err);
+          import('react-native').then(({ Alert }) => {
+            Alert.alert("Scheduling Error", err.message);
+          });
+        }
       }
     }
   }

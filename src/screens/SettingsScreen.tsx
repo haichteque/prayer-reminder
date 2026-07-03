@@ -6,7 +6,7 @@ import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 
-const SOUNDS = ['default', 'beep', 'chime', 'digital', 'echo', 'matrix'];
+const SOUNDS = ['default', 'adhan', 'beep', 'chime', 'digital', 'echo', 'matrix'];
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -50,6 +50,7 @@ export default function SettingsScreen({ navigation }: Props) {
       
       let soundFile;
       switch (sound) {
+        case 'adhan': soundFile = require('../../assets/sounds/adhan.mp3'); break;
         case 'beep': soundFile = require('../../assets/sounds/beep.wav'); break;
         case 'chime': soundFile = require('../../assets/sounds/chime.wav'); break;
         case 'digital': soundFile = require('../../assets/sounds/digital.wav'); break;
@@ -140,6 +141,29 @@ export default function SettingsScreen({ navigation }: Props) {
           style={styles.saveButton}
         >
           <Text style={styles.saveButtonText}>Save Changes</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        onPress={async () => {
+          import('@notifee/react-native').then(async (notifee) => {
+            const channelId = `prayer-alarms-${selectedSound}-v3`;
+            await notifee.default.displayNotification({
+              title: 'Test Notification',
+              body: 'If you see this, basic notifications are working!',
+              android: { channelId }
+            });
+          });
+        }} 
+        style={[styles.saveButtonWrapper, { marginTop: 12, shadowColor: '#f472b6' }]}
+      >
+        <LinearGradient 
+          colors={['#f472b6', '#db2777']} 
+          start={{ x: 0, y: 0 }} 
+          end={{ x: 1, y: 1 }}
+          style={styles.saveButton}
+        >
+          <Text style={styles.saveButtonText}>Test Instant Notification</Text>
         </LinearGradient>
       </TouchableOpacity>
       </ScrollView>

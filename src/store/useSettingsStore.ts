@@ -38,7 +38,7 @@ interface SettingsState {
   setSelectedSound: (sound: string) => void;
   setLocation: (location: LocationData | null) => void;
   setManualPrayerTime: (prayer: keyof PrayerOffsets, hours: number, minutes: number) => void;
-  syncManualPrayerTimes: (times: Record<string, Date>) => void;
+  syncManualPrayerTimes: (times: any) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -55,7 +55,7 @@ export const useSettingsStore = create<SettingsState>()(
         Isha: 15,
       },
       use24HourClock: false,
-      selectedSound: 'default',
+      selectedSound: 'adhan',
       location: null,
       manualPrayerTimes: null,
       setMadhab: (madhab) => set({ madhab }),

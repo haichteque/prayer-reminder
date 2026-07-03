@@ -14,6 +14,7 @@ export default function AlarmScreen({ navigation }: Props) {
   const { use24HourClock, selectedSound } = useSettingsStore();
   let asset;
   switch (selectedSound) {
+    case 'adhan': asset = require('../../assets/sounds/adhan.mp3'); break;
     case 'beep': asset = require('../../assets/sounds/beep.wav'); break;
     case 'chime': asset = require('../../assets/sounds/chime.wav'); break;
     case 'digital': asset = require('../../assets/sounds/digital.wav'); break;

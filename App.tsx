@@ -6,6 +6,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AlarmScreen from './src/screens/AlarmScreen';
 import { registerBackgroundPrayerSync } from './src/services/BackgroundTasks';
+import { requestNotificationPermission } from './src/services/NotificationService';
 
 // Register Notifee background event handler
 notifee.onBackgroundEvent(async ({ type, detail }) => {
@@ -24,18 +25,18 @@ export default function App() {
 
     // Handle initial notification if app was opened from a notification/full-screen intent
     notifee.getInitialNotification().then((initialNotification) => {
-      if (initialNotification) {
-        setTimeout(() => {
-          navigationRef.current?.navigate('Alarm');
-        }, 100);
-      }
+      // if (initialNotification) {
+      //   setTimeout(() => {
+      //     navigationRef.current?.navigate('Alarm');
+      //   }, 100);
+      // }
     });
 
     // Handle foreground events (if notification triggers while app is open)
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
-      if (type === EventType.DELIVERED || type === EventType.PRESS) {
-        navigationRef.current?.navigate('Alarm');
-      }
+      // if (type === EventType.DELIVERED || type === EventType.PRESS) {
+      //   navigationRef.current?.navigate('Alarm');
+      // }
     });
 
     return unsubscribe;
