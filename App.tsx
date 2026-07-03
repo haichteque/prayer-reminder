@@ -46,30 +46,24 @@ export default function App() {
       <Stack.Navigator 
         initialRouteName="Home"
         screenOptions={{
-          headerStyle: {
-            backgroundColor: '#000000',
-          },
-          headerTintColor: '#00FF41',
-          headerTitleStyle: {
-            fontFamily: 'monospace',
-            fontWeight: 'bold',
-          },
+          headerShown: false,
+          contentStyle: {
+            backgroundColor: '#36393f',
+          }
         }}
       >
         <Stack.Screen 
           name="Home" 
           component={HomeScreen} 
-          options={{ title: 'PRAYER_REMINDER' }}
         />
         <Stack.Screen 
           name="Settings" 
           component={SettingsScreen} 
-          options={{ title: 'SYSTEM_CONFIG' }}
         />
         <Stack.Screen 
           name="Alarm" 
           component={AlarmScreen} 
-          options={{ headerShown: false, gestureEnabled: false }}
+          options={{ gestureEnabled: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

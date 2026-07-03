@@ -104,15 +104,15 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>SYSTEM_ACTIVE</Text>
+      <Text style={styles.header}>Prayer Times</Text>
       
       <View style={styles.modeContainer}>
-        <Text style={styles.modeLabel}>MODE: {reminderMode.toUpperCase()}</Text>
+        <Text style={styles.modeLabel}>Mode: {reminderMode}</Text>
         <Switch
           value={reminderMode === 'Auto'}
           onValueChange={(val) => setReminderMode(val ? 'Auto' : 'Manual')}
-          trackColor={{ false: '#333', true: '#00FF41' }}
-          thumbColor={'#000'}
+          trackColor={{ false: '#42464D', true: '#10b981' }}
+          thumbColor={'#ffffff'}
         />
       </View>
 
@@ -121,37 +121,42 @@ export default function HomeScreen({ navigation }: Props) {
       )}
 
       {loading ? (
-        <ActivityIndicator size="large" color="#00FF41" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 50 }} />
       ) : prayerTimes ? (
-        <ScrollView style={styles.timesContainer}>
-          {(['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as Array<keyof PrayerOffsets>).map((prayer) => (
-            <TouchableOpacity 
-              key={prayer} 
-              style={styles.prayerRow}
-              disabled={reminderMode !== 'Manual'}
-              onPress={() => handlePrayerPress(prayer)}
-            >
-              <Text style={styles.prayerName}>{prayer.toUpperCase()}</Text>
-              <View style={styles.timeGroup}>
-                {reminderMode === 'Manual' && (
-                  <Text style={styles.offsetBadge}>-{offsets[prayer]}m</Text>
-                )}
-                <Text style={styles.prayerTime}>
-                  {prayer === 'Sunrise' ? formatTime(prayerTimes.sunrise) : formatTime(prayerTimes[prayer.toLowerCase() as keyof DailyPrayerTimes])}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.timesCard}>
+          <ScrollView style={styles.timesContainer}>
+            {(['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as Array<keyof PrayerOffsets>).map((prayer, index) => (
+              <TouchableOpacity 
+                key={prayer} 
+                style={[
+                  styles.prayerRow,
+                  index === 5 && styles.lastPrayerRow
+                ]}
+                disabled={reminderMode !== 'Manual'}
+                onPress={() => handlePrayerPress(prayer)}
+              >
+                <Text style={styles.prayerName}>{prayer}</Text>
+                <View style={styles.timeGroup}>
+                  {reminderMode === 'Manual' && (
+                    <Text style={styles.offsetBadge}>-{offsets[prayer]}m</Text>
+                  )}
+                  <Text style={styles.prayerTime}>
+                    {prayer === 'Sunrise' ? formatTime(prayerTimes.sunrise) : formatTime(prayerTimes[prayer.toLowerCase() as keyof DailyPrayerTimes])}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       ) : (
-        <Text style={styles.infoText}>AWAITING_LOCATION_DATA...</Text>
+        <Text style={styles.infoText}>Waiting for location data...</Text>
       )}
 
       <TouchableOpacity
         style={styles.settingsButton}
         onPress={() => navigation.navigate('Settings')}
       >
-        <Text style={styles.settingsButtonText}>[ CONFIGURE ]</Text>
+        <Text style={styles.settingsButtonText}>Settings</Text>
       </TouchableOpacity>
 
       {/* Modal for setting individual offset */}
@@ -186,159 +191,157 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#000000',
+    backgroundColor: '#36393f',
   },
   header: {
-    fontSize: 24,
-    fontFamily: 'monospace',
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 16,
     marginTop: 40,
     textAlign: 'center',
-    color: '#00FF41',
+    color: '#f2f3f5',
   },
   modeContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    gap: 15,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#00FF41',
-    borderRadius: 4,
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#2f3136',
+    borderRadius: 12,
   },
   modeLabel: {
-    color: '#00FF41',
-    fontFamily: 'monospace',
+    color: '#f2f3f5',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   helperText: {
-    color: '#00FF41',
-    opacity: 0.8,
-    fontFamily: 'monospace',
+    color: '#b9bbbe',
     textAlign: 'center',
-    marginBottom: 10,
-    fontSize: 12,
+    marginBottom: 12,
+    fontSize: 13,
   },
   infoText: {
     fontSize: 16,
-    fontFamily: 'monospace',
     textAlign: 'center',
-    color: '#00FF41',
+    color: '#b9bbbe',
     marginTop: 20,
   },
+  timesCard: {
+    flexShrink: 1,
+    backgroundColor: '#2f3136',
+    borderRadius: 12,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
   timesContainer: {
-    flex: 1,
-    marginTop: 10,
+    flexGrow: 0,
   },
   prayerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 18,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#111',
+    borderBottomColor: '#42464D',
+  },
+  lastPrayerRow: {
+    borderBottomWidth: 0,
   },
   prayerName: {
     fontSize: 18,
-    fontFamily: 'monospace',
-    color: '#00FF41',
+    fontWeight: '600',
+    color: '#f2f3f5',
   },
   timeGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   offsetBadge: {
-    backgroundColor: '#003300',
-    color: '#00FF41',
-    fontFamily: 'monospace',
-    paddingHorizontal: 8,
+    backgroundColor: '#36393f',
+    color: '#10b981',
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 12,
     fontSize: 12,
-    borderWidth: 1,
-    borderColor: '#00FF41',
+    fontWeight: 'bold',
   },
   prayerTime: {
     fontSize: 18,
-    fontFamily: 'monospace',
-    fontWeight: '600',
-    color: '#00FF41',
+    fontWeight: '700',
+    color: '#10b981',
   },
   settingsButton: {
-    backgroundColor: '#000',
-    borderWidth: 1,
-    borderColor: '#00FF41',
-    padding: 15,
-    borderRadius: 4,
+    backgroundColor: '#10b981',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 'auto',
     marginBottom: 20,
   },
   settingsButtonText: {
-    color: '#00FF41',
-    fontFamily: 'monospace',
+    color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#000',
-    borderWidth: 1,
-    borderColor: '#00FF41',
-    padding: 20,
-    borderRadius: 4,
+    backgroundColor: '#36393f',
+    padding: 24,
+    borderRadius: 12,
     width: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   modalTitle: {
-    color: '#00FF41',
-    fontFamily: 'monospace',
+    color: '#f2f3f5',
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 8,
   },
   modalLabel: {
-    color: '#00FF41',
-    fontFamily: 'monospace',
-    marginBottom: 10,
+    color: '#b9bbbe',
+    marginBottom: 16,
+    fontSize: 14,
   },
   modalInput: {
-    borderWidth: 1,
-    borderColor: '#00FF41',
-    color: '#00FF41',
-    fontFamily: 'monospace',
-    padding: 10,
+    backgroundColor: '#2f3136',
+    color: '#f2f3f5',
+    padding: 12,
+    borderRadius: 8,
     fontSize: 18,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 15,
+    gap: 12,
   },
   modalButton: {
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   modalButtonPrimary: {
-    backgroundColor: '#00FF41',
-    borderRadius: 4,
+    backgroundColor: '#10b981',
   },
   modalButtonText: {
-    color: '#00FF41',
-    fontFamily: 'monospace',
-    fontWeight: 'bold',
+    color: '#b9bbbe',
+    fontWeight: '600',
   },
   modalButtonTextPrimary: {
-    color: '#000',
-    fontFamily: 'monospace',
+    color: '#ffffff',
     fontWeight: 'bold',
   },
 });

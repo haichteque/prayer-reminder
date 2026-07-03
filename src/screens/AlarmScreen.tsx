@@ -60,7 +60,7 @@ export default function AlarmScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>ALERT: PRAYER_TIME</Text>
+      <Text style={styles.title}>Time to Pray</Text>
       <Text style={styles.time}>
         {currentTime.toLocaleTimeString([], { 
           hour: '2-digit', 
@@ -70,7 +70,7 @@ export default function AlarmScreen({ navigation }: Props) {
       </Text>
       
       <TouchableOpacity style={styles.dismissButton} onPress={handleDismiss}>
-        <Text style={styles.dismissText}>DISMISS_ALERT</Text>
+        <Text style={styles.dismissText}>Dismiss</Text>
       </TouchableOpacity>
     </View>
   );
@@ -79,36 +79,36 @@ export default function AlarmScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#36393f',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    color: '#00FF41',
-    fontFamily: 'monospace',
+    fontSize: 32,
+    color: '#f2f3f5',
     fontWeight: 'bold',
     marginBottom: 20,
   },
   time: {
-    fontSize: 64,
-    color: '#00FF41',
-    fontFamily: 'monospace',
+    fontSize: 72,
+    color: '#10b981',
     fontWeight: 'bold',
     marginBottom: 60,
   },
   dismissButton: {
-    backgroundColor: '#000000',
-    borderWidth: 2,
-    borderColor: '#00FF41',
-    paddingVertical: 20,
-    paddingHorizontal: 60,
-    borderRadius: 8,
+    backgroundColor: '#10b981',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   dismissText: {
-    color: '#00FF41',
-    fontFamily: 'monospace',
-    fontSize: 24,
+    color: '#ffffff',
+    fontSize: 22,
     fontWeight: 'bold',
   },
 });
