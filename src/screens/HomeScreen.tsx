@@ -37,7 +37,22 @@ export default function HomeScreen({ navigation }: Props) {
         return;
       }
 
-      let currentLoc = await Location.getCurrentPositionAsync({});
+      let currentLoc;
+      try {
+        currentLoc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      } catch (error) {
+        console.log("Failed to get current position, trying last known...", error);
+        currentLoc = await Location.getLastKnownPositionAsync({});
+      }
+
+      if (!currentLoc) {
+        alert('Could not fetch location. Please ensure location services are enabled on your device/emulator.');
+        setLoading(false);
+        return;
+      }
+
       const newLoc = {
         latitude: currentLoc.coords.latitude,
         longitude: currentLoc.coords.longitude,

@@ -104,36 +104,3 @@ export async function schedulePrayerNotifications(
   }
 }
 
-/**
- * Triggers an immediate test alarm (in 5 seconds) so the user can verify it works.
- */
-export async function testAlarm(selectedSound: string = 'default') {
-  const channelId = await createNotificationChannel(selectedSound);
-  
-  const trigger: TimestampTrigger = {
-    type: TriggerType.TIMESTAMP,
-    timestamp: Date.now() + 5000, // Trigger in 5 seconds
-  };
-
-  await notifee.createTriggerNotification(
-    {
-      id: 'test-alarm',
-      title: 'SYSTEM_TEST_ALARM',
-      body: 'This is a test of the alarm system.',
-      android: {
-        channelId: channelId,
-        pressAction: {
-          id: 'default',
-        },
-        fullScreenAction: {
-          id: 'default',
-        },
-        autoCancel: false,
-        ongoing: true,
-        loopSound: true,
-        category: AndroidCategory.ALARM,
-      },
-    },
-    trigger
-  );
-}

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { schedulePrayerNotifications, testAlarm } from '../services/NotificationService';
+import { schedulePrayerNotifications } from '../services/NotificationService';
+import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 
 const SOUNDS = ['default', 'beep', 'chime', 'digital', 'echo', 'matrix'];
 
@@ -14,6 +15,16 @@ export default function SettingsScreen() {
     location 
   } = useSettingsStore();
 
+  const [soundObject, setSoundObject] = useState<AudioPlayer | null>(null);
+
+  useEffect(() => {
+    return soundObject
+      ? () => {
+          soundObject.remove();
+        }
+      : undefined;
+  }, [soundObject]);
+
   const handleSaveAndReschedule = async () => {
     if (location) {
       await schedulePrayerNotifications(location, madhab, reminderMode, offsets, selectedSound, 7);
@@ -21,15 +32,36 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleTestAlarm = async () => {
-    await testAlarm(selectedSound);
-    Alert.alert("Test Alarm Triggered", "An alarm should pop up in exactly 5 seconds. Please put the app in the background (or leave it open) to test.");
-  };
-
   const handleSoundSelect = async (sound: string) => {
     setSelectedSound(sound);
-    // Play a preview immediately
-    await testAlarm(sound);
+    
+    try {
+      if (soundObject) {
+        soundObject.remove();
+      }
+      
+      let soundFile;
+      switch (sound) {
+        case 'beep': soundFile = require('../../assets/sounds/beep.wav'); break;
+        case 'chime': soundFile = require('../../assets/sounds/chime.wav'); break;
+        case 'digital': soundFile = require('../../assets/sounds/digital.wav'); break;
+        case 'echo': soundFile = require('../../assets/sounds/echo.wav'); break;
+        case 'matrix': soundFile = require('../../assets/sounds/matrix.wav'); break;
+        default: return; // 'default' sound handles itself, no specific asset preview here
+      }
+
+      if (soundFile) {
+        const newSound = createAudioPlayer(soundFile);
+        setSoundObject(newSound);
+        newSound.play();
+        
+        setTimeout(() => {
+          newSound.pause();
+        }, 5000);
+      }
+    } catch (error) {
+      console.log('Error playing preview:', error);
+    }
   };
 
   return (
@@ -83,13 +115,6 @@ export default function SettingsScreen() {
             thumbColor={'#000'}
           />
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>[ DIAGNOSTICS ]</Text>
-        <TouchableOpacity style={styles.testButton} onPress={handleTestAlarm}>
-          <Text style={styles.testButtonText}>RUN_ALARM_TEST</Text>
-        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSaveAndReschedule}>
@@ -204,21 +229,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#000000',
     fontSize: 18,
-    fontFamily: 'monospace',
-    fontWeight: 'bold',
-  },
-  testButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#00FF41',
-    padding: 15,
-    borderRadius: 4,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  testButtonText: {
-    color: '#00FF41',
-    fontSize: 16,
     fontFamily: 'monospace',
     fontWeight: 'bold',
   },
