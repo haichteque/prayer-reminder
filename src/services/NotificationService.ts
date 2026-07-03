@@ -33,7 +33,7 @@ export async function checkExactAlarmPermission() {
 }
 
 export async function createNotificationChannel(sound: string) {
-  const channelId = `prayer-alarms-${sound}-v3`;
+  const channelId = `prayer-alarms-${sound}-v5`;
   
   await notifee.createChannel({
     id: channelId,

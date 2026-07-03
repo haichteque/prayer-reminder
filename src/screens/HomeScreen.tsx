@@ -40,6 +40,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [selectedPrayer, setSelectedPrayer] = useState<keyof PrayerOffsets | null>(null);
   const [tempHours, setTempHours] = useState<string>('');
   const [tempMinutes, setTempMinutes] = useState<string>('');
+  const [tempAmPm, setTempAmPm] = useState<'AM'|'PM'>('AM');
 
   useEffect(() => {
     (async () => {
@@ -187,7 +188,17 @@ export default function HomeScreen({ navigation }: Props) {
     if (reminderMode === 'Manual') {
       setSelectedPrayer(prayer);
       const currentTime = manualPrayerTimes?.[prayer] || { hours: 12, minutes: 0 };
-      setTempHours(String(currentTime.hours).padStart(2, '0'));
+      
+      if (use24HourClock) {
+        setTempHours(String(currentTime.hours).padStart(2, '0'));
+        setTempAmPm('AM');
+      } else {
+        const ampm = currentTime.hours >= 12 ? 'PM' : 'AM';
+        let h12 = currentTime.hours % 12;
+        if (h12 === 0) h12 = 12;
+        setTempHours(String(h12).padStart(2, '0'));
+        setTempAmPm(ampm);
+      }
       setTempMinutes(String(currentTime.minutes).padStart(2, '0'));
     } else {
       alert("Switch to Manual mode to edit individual prayer times.");
@@ -199,7 +210,13 @@ export default function HomeScreen({ navigation }: Props) {
       let h = parseInt(tempHours, 10);
       let m = parseInt(tempMinutes, 10);
       if (!isNaN(h) && !isNaN(m)) {
-        if (h < 0) h = 0; if (h > 23) h = 23;
+        if (!use24HourClock) {
+          if (h < 1) h = 1; if (h > 12) h = 12;
+          if (tempAmPm === 'PM' && h !== 12) h += 12;
+          if (tempAmPm === 'AM' && h === 12) h = 0;
+        } else {
+          if (h < 0) h = 0; if (h > 23) h = 23;
+        }
         if (m < 0) m = 0; if (m > 59) m = 59;
         setManualPrayerTime(selectedPrayer, h, m);
       }
@@ -347,6 +364,23 @@ export default function HomeScreen({ navigation }: Props) {
                 placeholderTextColor="#64748b"
                 maxLength={2}
               />
+              
+              {!use24HourClock && (
+                <View style={styles.amPmContainer}>
+                  <TouchableOpacity 
+                    style={[styles.amPmButton, tempAmPm === 'AM' && styles.amPmActive]}
+                    onPress={() => setTempAmPm('AM')}
+                  >
+                    <Text style={[styles.amPmText, tempAmPm === 'AM' && styles.amPmTextActive]}>AM</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.amPmButton, tempAmPm === 'PM' && styles.amPmActive]}
+                    onPress={() => setTempAmPm('PM')}
+                  >
+                    <Text style={[styles.amPmText, tempAmPm === 'PM' && styles.amPmTextActive]}>PM</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             <View style={styles.modalActions}>
@@ -603,5 +637,29 @@ const styles = StyleSheet.create({
   modalButtonTextPrimary: {
     color: '#ffffff',
     fontWeight: 'bold',
+  },
+  amPmContainer: {
+    flexDirection: 'column',
+    gap: 4,
+    marginLeft: 8,
+  },
+  amPmButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  amPmActive: {
+    backgroundColor: '#818cf8',
+    borderColor: '#818cf8',
+  },
+  amPmText: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  amPmTextActive: {
+    color: '#fff',
   },
 });
