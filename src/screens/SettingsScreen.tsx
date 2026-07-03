@@ -3,16 +3,24 @@ import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert, ScrollView } f
 import { useSettingsStore } from '../store/useSettingsStore';
 import { schedulePrayerNotifications } from '../services/NotificationService';
 import { createAudioPlayer, AudioPlayer } from 'expo-audio';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 
 const SOUNDS = ['default', 'beep', 'chime', 'digital', 'echo', 'matrix'];
 
-export default function SettingsScreen() {
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type Props = {
+  navigation: NativeStackNavigationProp<any, any>;
+};
+
+export default function SettingsScreen({ navigation }: Props) {
   const { 
     madhab, setMadhab, 
     use24HourClock, setUse24HourClock,
     reminderMode, offsets,
     selectedSound, setSelectedSound,
-    location 
+    location, manualPrayerTimes
   } = useSettingsStore();
 
   const [soundObject, setSoundObject] = useState<AudioPlayer | null>(null);
@@ -27,7 +35,7 @@ export default function SettingsScreen() {
 
   const handleSaveAndReschedule = async () => {
     if (location) {
-      await schedulePrayerNotifications(location, madhab, reminderMode, offsets, selectedSound, 7);
+      await schedulePrayerNotifications(location, madhab, reminderMode, offsets, manualPrayerTimes, selectedSound, 7);
       Alert.alert("Success", "Settings applied and alarms rescheduled.");
     }
   };
@@ -65,8 +73,15 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.header}>Settings</Text>
+    <View style={styles.container}>
+      <View style={styles.topHeader}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+          <Feather name="arrow-left" size={22} color="#F8FAFC" />
+        </TouchableOpacity>
+        <Text style={styles.topHeaderTitle}>SETTINGS</Text>
+        <View style={{ width: 42 }} />
+      </View>
+      <ScrollView contentContainerStyle={styles.contentContainer}>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Alarm Sound</Text>
@@ -111,45 +126,69 @@ export default function SettingsScreen() {
           <Switch
             value={use24HourClock}
             onValueChange={setUse24HourClock}
-            trackColor={{ false: '#42464D', true: '#10b981' }}
+            trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#818cf8' }}
             thumbColor={'#ffffff'}
           />
         </View>
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSaveAndReschedule}>
-        <Text style={styles.saveButtonText}>Save Changes</Text>
+      <TouchableOpacity onPress={handleSaveAndReschedule} style={styles.saveButtonWrapper}>
+        <LinearGradient 
+          colors={['#38bdf8', '#818cf8']} 
+          start={{ x: 0, y: 0 }} 
+          end={{ x: 1, y: 1 }}
+          style={styles.saveButton}
+        >
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        </LinearGradient>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#36393f',
+    backgroundColor: '#0F172A',
+  },
+  topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+  },
+  topHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    letterSpacing: 2,
+  },
+  iconButton: {
+    padding: 10,
+    borderRadius: 100,
   },
   contentContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    color: '#f2f3f5',
+    padding: 24,
+    paddingBottom: 60,
   },
   section: {
-    marginBottom: 32,
-    backgroundColor: '#2f3136',
-    padding: 20,
-    borderRadius: 12,
+    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: '#f2f3f5',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 20,
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   soundGrid: {
     flexDirection: 'row',
@@ -157,29 +196,30 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   soundButton: {
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#42464D',
-    borderRadius: 8,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 100,
     alignItems: 'center',
-    backgroundColor: '#36393f',
+    backgroundColor: 'rgba(255,255,255,0.02)',
     minWidth: '46%',
   },
   soundButtonActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#818cf8',
+    borderColor: '#818cf8',
   },
   soundButtonText: {
-    color: '#b9bbbe',
+    color: '#cbd5e1',
     fontWeight: '600',
   },
   soundButtonTextActive: {
     color: '#ffffff',
   },
   helperText: {
-    color: '#b9bbbe',
+    color: '#64748b',
     fontSize: 13,
-    marginTop: 12,
+    marginTop: 16,
+    textAlign: 'center',
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -187,19 +227,19 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    padding: 14,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#42464D',
-    borderRadius: 8,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 100,
     alignItems: 'center',
-    backgroundColor: '#36393f',
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   buttonActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#818cf8',
+    borderColor: '#818cf8',
   },
   buttonText: {
-    color: '#b9bbbe',
+    color: '#cbd5e1',
     fontWeight: '600',
   },
   buttonTextActive: {
@@ -209,22 +249,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   label: {
     fontSize: 16,
-    color: '#b9bbbe',
+    color: '#e2e8f0',
+    fontWeight: '600',
+  },
+  saveButtonWrapper: {
+    marginTop: 20,
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
   },
   saveButton: {
-    backgroundColor: '#10b981',
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 100,
     alignItems: 'center',
-    marginTop: 10,
   },
   saveButtonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });

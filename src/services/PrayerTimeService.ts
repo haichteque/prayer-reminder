@@ -11,6 +11,7 @@ export interface DailyPrayerTimes {
   sunrise: Date;
   dhuhr: Date;
   asr: Date;
+  sunset: Date;
   maghrib: Date;
   isha: Date;
 }
@@ -42,6 +43,7 @@ export function getPrayerTimesForDate(
     sunrise: prayerTimes.sunrise,
     dhuhr: prayerTimes.dhuhr,
     asr: prayerTimes.asr,
+    sunset: prayerTimes.sunset,
     maghrib: prayerTimes.maghrib,
     isha: prayerTimes.isha,
   };

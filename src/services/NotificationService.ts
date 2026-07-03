@@ -6,7 +6,7 @@ import notifee, {
   AndroidCategory,
 } from '@notifee/react-native';
 import { getPrayerTimesForDate } from './PrayerTimeService';
-import { LocationData, Madhab, ReminderMode, PrayerOffsets } from '../store/useSettingsStore';
+import { LocationData, Madhab, ReminderMode, PrayerOffsets, ManualPrayerTimes } from '../store/useSettingsStore';
 
 export async function requestNotificationPermission() {
   const settings = await notifee.requestPermission();
@@ -37,6 +37,7 @@ export async function schedulePrayerNotifications(
   madhab: Madhab,
   reminderMode: ReminderMode,
   offsets: PrayerOffsets,
+  manualPrayerTimes: ManualPrayerTimes | null,
   selectedSound: string = 'default',
   daysToSchedule: number = 7
 ) {
@@ -63,10 +64,13 @@ export async function schedulePrayerNotifications(
 
     for (const prayer of prayers) {
       let alarmTime = new Date(prayer.time);
-      const offset = offsets[prayer.name];
 
-      if (reminderMode === 'Manual') {
-        alarmTime.setMinutes(alarmTime.getMinutes() - offset);
+      if (reminderMode === 'Manual' && manualPrayerTimes) {
+        // In Manual mode, the time is strictly fixed to the user's manual settings
+        const manualSetting = manualPrayerTimes[prayer.name];
+        if (manualSetting) {
+          alarmTime.setHours(manualSetting.hours, manualSetting.minutes, 0, 0);
+        }
       }
 
       // Ensure we don't schedule alarms in the past
@@ -82,7 +86,7 @@ export async function schedulePrayerNotifications(
             title: `Time for ${prayer.name} Prayer`,
             body: reminderMode === 'Auto'
               ? `It is now time for ${prayer.name}.`
-              : `${prayer.name} is in ${offset} minutes.`,
+              : `It is now time for ${prayer.name} (Manual Mode).`,
             android: {
               channelId: channelId,
               pressAction: {
