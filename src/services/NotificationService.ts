@@ -74,7 +74,7 @@ export async function schedulePrayerNotifications(
 
     const prayers: Array<{ name: keyof PrayerOffsets, time: Date }> = [
       { name: 'Fajr', time: prayerTimes.fajr },
-      { name: 'Sunrise', time: prayerTimes.sunrise },
+      // Sunrise is intentionally excluded — it is not a prayer with an azaan
       { name: 'Dhuhr', time: prayerTimes.dhuhr },
       { name: 'Asr', time: prayerTimes.asr },
       { name: 'Maghrib', time: prayerTimes.maghrib },
