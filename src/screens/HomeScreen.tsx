@@ -1,128 +1,122 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, TextInput, Switch } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  ActivityIndicator, ScrollView, Modal, TextInput, Switch,
+} from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { useSettingsStore, PrayerOffsets } from '../store/useSettingsStore';
 import { getPrayerTimesForDate, DailyPrayerTimes } from '../services/PrayerTimeService';
 import { schedulePrayerNotifications, requestNotificationPermission, checkExactAlarmPermission } from '../services/NotificationService';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
-const GRADIENTS: Record<string, [string, string]> = {
-  Fajr: ['#38bdf8', '#818cf8'],     // Sky to Indigo
-  Dhuhr: ['#fbbf24', '#f59e0b'],    // Amber
-  Asr: ['#f472b6', '#db2777'],      // Pink to Rose
-  Maghrib: ['#c084fc', '#9333ea'],  // Purple
-  Isha: ['#818cf8', '#4f46e5'],     // Indigo
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const C = {
+  bg:       '#0A0A0A',
+  surface:  '#141414',
+  border:   '#222222',
+  accent:   '#6366f1',
+  textPri:  '#F8FAFC',
+  textSec:  '#64748B',
+  textMut:  '#334155',
 };
 
-type Props = {
-  navigation: NativeStackNavigationProp<any, any>;
-};
+type Props = { navigation: NativeStackNavigationProp<any, any> };
 
 export default function HomeScreen({ navigation }: Props) {
-  const { 
-    location, setLocation, 
-    madhab, 
+  const {
+    location, setLocation,
+    madhab,
     reminderMode, setReminderMode,
     offsets,
     manualPrayerTimes, setManualPrayerTime, syncManualPrayerTimes,
     use24HourClock,
-    selectedSound
+    selectedSound,
   } = useSettingsStore();
-  
-  const [prayerTimes, setPrayerTimes] = useState<DailyPrayerTimes | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [cityName, setCityName] = useState<string>('Current Location');
-  const [nextPrayerInfo, setNextPrayerInfo] = useState<{name: string, timeDiff: string} | null>(null);
 
-  // Modal State
+  const [prayerTimes, setPrayerTimes]     = useState<DailyPrayerTimes | null>(null);
+  const [loading, setLoading]             = useState(false);
+  const [cityName, setCityName]           = useState<string>('Current Location');
+  const [nextPrayerName, setNextPrayerName] = useState<string | null>(null);
+  const [nextPrayerInfo, setNextPrayerInfo] = useState<{ name: string; timeDiff: string } | null>(null);
+
+  // Modal state
   const [selectedPrayer, setSelectedPrayer] = useState<keyof PrayerOffsets | null>(null);
-  const [tempHours, setTempHours] = useState<string>('');
+  const [tempHours, setTempHours]   = useState<string>('');
   const [tempMinutes, setTempMinutes] = useState<string>('');
-  const [tempAmPm, setTempAmPm] = useState<'AM'|'PM'>('AM');
+  const [tempAmPm, setTempAmPm]     = useState<'AM' | 'PM'>('AM');
 
+  // ── Permission & location boot ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       setLoading(true);
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access location was denied');
         setLoading(false);
         return;
       }
 
-      // Add a tiny delay to ensure the OS has fully dismissed the location prompt
-      // before showing the notification prompt, preventing race conditions.
+      // Small delay to avoid race condition between OS permission dialogs
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const notifGranted = await requestNotificationPermission();
       if (!notifGranted) {
         console.warn('Notification permissions not granted');
       } else {
-        // If they granted basic notifications, check if the OS blocked exact alarms (Android 14+)
         await checkExactAlarmPermission();
       }
 
       let currentLoc;
       try {
-        currentLoc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-      } catch (error) {
-        console.log("Failed to get current position, trying last known...", error);
+        currentLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch {
         currentLoc = await Location.getLastKnownPositionAsync({});
       }
 
       if (!currentLoc) {
-        alert('Could not fetch location. Please ensure location services are enabled on your device/emulator.');
+        alert('Could not fetch location. Please ensure location services are enabled.');
         setLoading(false);
         return;
       }
 
-      const newLoc = {
-        latitude: currentLoc.coords.latitude,
-        longitude: currentLoc.coords.longitude,
-      };
+      const newLoc = { latitude: currentLoc.coords.latitude, longitude: currentLoc.coords.longitude };
       setLocation(newLoc);
 
-      // Reverse geocode for city name
       try {
         const geocode = await Location.reverseGeocodeAsync(newLoc);
-        if (geocode && geocode.length > 0) {
-          const place = geocode[0];
-          setCityName(place.city || place.region || place.country || 'Current Location');
+        if (geocode?.length > 0) {
+          const p = geocode[0];
+          setCityName(p.city || p.region || p.country || 'Current Location');
         }
-      } catch (err) {
-        console.log("Reverse geocoding failed", err);
-      }
+      } catch { /* silent */ }
 
       await schedulePrayerNotifications(newLoc, madhab, reminderMode, offsets, manualPrayerTimes, selectedSound, 7);
       setLoading(false);
     })();
   }, []);
 
+  // ── Prayer times ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (location) {
-      const autoTimes = getPrayerTimesForDate(new Date(), location, madhab);
-      if (reminderMode === 'Manual' && manualPrayerTimes) {
-        const buildManualDate = (hm: {hours: number, minutes: number}) => {
-          const d = new Date();
-          d.setHours(hm.hours, hm.minutes, 0, 0);
-          return d;
-        };
-        setPrayerTimes({
-          fajr: buildManualDate(manualPrayerTimes.Fajr),
-          sunrise: buildManualDate(manualPrayerTimes.Sunrise),
-          dhuhr: buildManualDate(manualPrayerTimes.Dhuhr),
-          asr: buildManualDate(manualPrayerTimes.Asr),
-          sunset: autoTimes.sunset, // Keep sunset auto since it's just for display
-          maghrib: buildManualDate(manualPrayerTimes.Maghrib),
-          isha: buildManualDate(manualPrayerTimes.Isha),
-        });
-      } else {
-        setPrayerTimes(autoTimes);
-      }
+    if (!location) return;
+    const autoTimes = getPrayerTimesForDate(new Date(), location, madhab);
+    if (reminderMode === 'Manual' && manualPrayerTimes) {
+      const build = (hm: { hours: number; minutes: number }) => {
+        const d = new Date();
+        d.setHours(hm.hours, hm.minutes, 0, 0);
+        return d;
+      };
+      setPrayerTimes({
+        fajr:    build(manualPrayerTimes.Fajr),
+        sunrise: build(manualPrayerTimes.Sunrise),
+        dhuhr:   build(manualPrayerTimes.Dhuhr),
+        asr:     build(manualPrayerTimes.Asr),
+        sunset:  autoTimes.sunset,
+        maghrib: build(manualPrayerTimes.Maghrib),
+        isha:    build(manualPrayerTimes.Isha),
+      });
+    } else {
+      setPrayerTimes(autoTimes);
     }
   }, [location, madhab, reminderMode, manualPrayerTimes]);
 
@@ -132,83 +126,64 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }, [reminderMode, offsets, manualPrayerTimes, selectedSound]);
 
-  // Next prayer countdown timer
+  // ── Countdown timer ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!prayerTimes) return;
-
     const timer = setInterval(() => {
       const now = new Date();
       const prayers = [
-        { name: 'Fajr', time: prayerTimes.fajr },
-        { name: 'Sunrise', time: prayerTimes.sunrise },
-        { name: now.getDay() === 5 ? 'Jummah' : 'Dhuhr', time: prayerTimes.dhuhr },
-        { name: 'Asr', time: prayerTimes.asr },
-        { name: 'Maghrib', time: prayerTimes.maghrib },
-        { name: 'Isha', time: prayerTimes.isha },
+        { name: 'Fajr',                                               time: prayerTimes.fajr },
+        { name: 'Sunrise',                                            time: prayerTimes.sunrise },
+        { name: now.getDay() === 5 ? 'Jummah' : 'Dhuhr',            time: prayerTimes.dhuhr },
+        { name: 'Asr',                                               time: prayerTimes.asr },
+        { name: 'Maghrib',                                           time: prayerTimes.maghrib },
+        { name: 'Isha',                                              time: prayerTimes.isha },
       ];
-
       let next = prayers.find(p => p.time > now);
       if (!next) {
-        // If all prayers today have passed, Fajr tomorrow is next (roughly +24h for now)
-        const tmrwFajr = new Date(prayerTimes.fajr);
-        tmrwFajr.setDate(tmrwFajr.getDate() + 1);
-        next = { name: 'Fajr', time: tmrwFajr };
+        const tmrw = new Date(prayerTimes.fajr);
+        tmrw.setDate(tmrw.getDate() + 1);
+        next = { name: 'Fajr', time: tmrw };
       }
-
+      setNextPrayerName(next.name);
       const diffMs = next.time.getTime() - now.getTime();
-      if (diffMs <= 0) {
-        setNextPrayerInfo(null);
-        return;
-      }
-
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
-      
-      let diffStr = '';
-      if (hours > 0) diffStr += `${hours}h `;
-      if (mins > 0 || hours > 0) diffStr += `${mins}m `;
-      diffStr += `${secs}s`;
-
-      setNextPrayerInfo({ name: next.name, timeDiff: diffStr });
+      if (diffMs <= 0) { setNextPrayerInfo(null); return; }
+      const h = Math.floor(diffMs / 3_600_000);
+      const m = Math.floor((diffMs % 3_600_000) / 60_000);
+      const s = Math.floor((diffMs % 60_000) / 1000);
+      let str = '';
+      if (h > 0) str += `${h}h `;
+      if (m > 0 || h > 0) str += `${m}m `;
+      str += `${s}s`;
+      setNextPrayerInfo({ name: next.name, timeDiff: str });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [prayerTimes]);
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: !use24HourClock 
-    });
-  };
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: !use24HourClock });
 
   const handlePrayerPress = (prayer: keyof PrayerOffsets) => {
     if (reminderMode === 'Manual') {
       setSelectedPrayer(prayer);
-      const currentTime = manualPrayerTimes?.[prayer] || { hours: 12, minutes: 0 };
-      
+      const cur = manualPrayerTimes?.[prayer] || { hours: 12, minutes: 0 };
       if (use24HourClock) {
-        setTempHours(String(currentTime.hours).padStart(2, '0'));
+        setTempHours(String(cur.hours).padStart(2, '0'));
         setTempAmPm('AM');
       } else {
-        const ampm = currentTime.hours >= 12 ? 'PM' : 'AM';
-        let h12 = currentTime.hours % 12;
-        if (h12 === 0) h12 = 12;
+        setTempAmPm(cur.hours >= 12 ? 'PM' : 'AM');
+        let h12 = cur.hours % 12; if (h12 === 0) h12 = 12;
         setTempHours(String(h12).padStart(2, '0'));
-        setTempAmPm(ampm);
       }
-      setTempMinutes(String(currentTime.minutes).padStart(2, '0'));
+      setTempMinutes(String(cur.minutes).padStart(2, '0'));
     } else {
-      alert("Switch to Manual mode to edit individual prayer times.");
+      alert('Switch to Manual mode to edit individual prayer times.');
     }
   };
 
   const saveTime = () => {
     if (selectedPrayer && tempHours && tempMinutes) {
-      let h = parseInt(tempHours, 10);
-      let m = parseInt(tempMinutes, 10);
+      let h = parseInt(tempHours, 10), m = parseInt(tempMinutes, 10);
       if (!isNaN(h) && !isNaN(m)) {
         if (!use24HourClock) {
           if (h < 1) h = 1; if (h > 12) h = 12;
@@ -226,169 +201,169 @@ export default function HomeScreen({ navigation }: Props) {
 
   const handleSync = () => {
     if (location) {
-      const autoTimes = getPrayerTimesForDate(new Date(), location, madhab);
-      syncManualPrayerTimes(autoTimes);
-      alert("Prayer times synchronized to current auto times!");
+      syncManualPrayerTimes(getPrayerTimesForDate(new Date(), location, madhab));
+      alert('Prayer times synchronized to current auto times!');
     }
   };
 
+  // ── Render ──────────────────────────────────────────────────────────────────
+  const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topHeader}>
-        <Feather name="arrow-left" size={24} color="transparent" />
-        <Text style={styles.topHeaderTitle}>PRAYER TIMES</Text>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
-          <Feather name="settings" size={22} color="#F8FAFC" />
+    <View style={s.container}>
+
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <View style={{ width: 36 }} />
+        <Text style={s.headerTitle}>Prayer Times</Text>
+        <TouchableOpacity style={s.iconBtn} onPress={() => navigation.navigate('Settings')}>
+          <Feather name="settings" size={18} color={C.textSec} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.infoCardWrapper}>
-        <LinearGradient 
-          colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} 
-          style={styles.infoPanel}
-        >
-        <View style={styles.sunBlock}>
-          <Text style={styles.sunLabel}>Sunrise</Text>
-          <Feather name="sun" size={28} color="#fff" style={styles.sunIcon} />
-          <Text style={styles.sunTime}>
-            {prayerTimes ? formatTime(prayerTimes.sunrise) : '--:--'}
-          </Text>
+      {/* ── Info strip ── */}
+      <View style={s.infoStrip}>
+        <View style={s.infoCell}>
+          <Feather name="sun" size={14} color={C.textMut} />
+          <Text style={s.infoCellLabel}>Sunrise</Text>
+          <Text style={s.infoCellValue}>{prayerTimes ? fmt(prayerTimes.sunrise) : '--:--'}</Text>
         </View>
 
-        <View style={styles.centerBlock}>
-          <Text style={styles.cityName}>{cityName}</Text>
-          <Text style={styles.madhabName}>{madhab.toUpperCase()}</Text>
-          <Text style={styles.zawalTime}>--------------</Text>
+        <View style={s.infoDivider} />
+
+        <View style={s.infoCenterCell}>
+          <Text style={s.cityName}>{cityName}</Text>
+          <Text style={s.madhabTag}>{madhab}</Text>
           {nextPrayerInfo && (
-            <Text style={styles.nextPrayerText}>
-              Next Prayer {nextPrayerInfo.name.toUpperCase()} {nextPrayerInfo.timeDiff}
+            <Text style={s.nextUp}>
+              {nextPrayerInfo.name} in {nextPrayerInfo.timeDiff}
             </Text>
           )}
         </View>
 
-        <View style={styles.sunBlock}>
-          <Text style={styles.sunLabel}>Sunset</Text>
-          <Feather name="sunset" size={28} color="#fff" style={styles.sunIcon} />
-          <Text style={styles.sunTime}>
-            {prayerTimes ? formatTime(prayerTimes.sunset) : '--:--'}
-          </Text>
+        <View style={s.infoDivider} />
+
+        <View style={s.infoCell}>
+          <Feather name="sunset" size={14} color={C.textMut} />
+          <Text style={s.infoCellLabel}>Sunset</Text>
+          <Text style={s.infoCellValue}>{prayerTimes ? fmt(prayerTimes.sunset) : '--:--'}</Text>
         </View>
-        </LinearGradient>
       </View>
 
-
-
-      <View style={styles.modeContainer}>
-        <View style={styles.modeToggleRow}>
-          <Text style={styles.modeLabel}>Reminder Mode: {reminderMode}</Text>
+      {/* ── Mode row ── */}
+      <View style={s.modeRow}>
+        <Text style={s.modeLabel}>
+          {reminderMode === 'Auto' ? 'Auto reminders' : 'Manual reminders'}
+        </Text>
+        <View style={s.modeRight}>
+          {reminderMode === 'Manual' && (
+            <TouchableOpacity style={s.syncBtn} onPress={handleSync}>
+              <Feather name="refresh-cw" size={13} color={C.accent} />
+              <Text style={s.syncBtnText}>Sync</Text>
+            </TouchableOpacity>
+          )}
           <Switch
             value={reminderMode === 'Auto'}
-            onValueChange={(val) => setReminderMode(val ? 'Auto' : 'Manual')}
-            trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#818cf8' }}
-            thumbColor={'#ffffff'}
+            onValueChange={val => setReminderMode(val ? 'Auto' : 'Manual')}
+            trackColor={{ false: C.border, true: C.accent }}
+            thumbColor={C.textPri}
           />
         </View>
-        {reminderMode === 'Manual' && (
-          <TouchableOpacity style={styles.syncButton} onPress={handleSync}>
-            <Feather name="refresh-cw" size={16} color="#818cf8" />
-            <Text style={styles.syncButtonText}>SYNC TIMES</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
+      {/* ── Prayer list ── */}
       {loading ? (
-        <ActivityIndicator size="large" color="#f3d29a" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={C.accent} style={{ marginTop: 60 }} />
       ) : prayerTimes ? (
-        <ScrollView style={styles.cardsContainer} contentContainerStyle={{ paddingBottom: 20 }}>
-          {(['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const).map((prayer) => (
-            <TouchableOpacity 
-              key={prayer} 
-              activeOpacity={0.8}
-              onPress={() => handlePrayerPress(prayer as keyof PrayerOffsets)}
-              style={styles.cardWrapper}
-            >
-              <LinearGradient 
-                colors={GRADIENTS[prayer] || ['#333', '#555']} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 1 }}
-                style={styles.gradientCard}
-              >
-                <Text style={styles.cardPrayerName}>
-                  {prayer === 'Dhuhr' && new Date().getDay() === 5 ? 'JUMMAH' : prayer.toUpperCase()}
-                </Text>
-                
-                <View style={styles.cardRight}>
-                  <Text style={styles.cardPrayerTime}>
-                    {formatTime(prayerTimes[prayer.toLowerCase() as keyof DailyPrayerTimes])}
+        <ScrollView style={s.listContainer} contentContainerStyle={{ paddingBottom: 32 }}>
+          <View style={s.listCard}>
+            {PRAYERS.map((prayer, idx) => {
+              const isNext = nextPrayerName === prayer ||
+                (prayer === 'Dhuhr' && nextPrayerName === 'Jummah');
+              const isLast = idx === PRAYERS.length - 1;
+              const displayName = prayer === 'Dhuhr' && new Date().getDay() === 5 ? 'Jummah' : prayer;
+              const timeStr = fmt(prayerTimes[prayer.toLowerCase() as keyof DailyPrayerTimes]);
+              return (
+                <TouchableOpacity
+                  key={prayer}
+                  activeOpacity={0.6}
+                  onPress={() => handlePrayerPress(prayer as keyof PrayerOffsets)}
+                  style={[s.prayerRow, !isLast && s.prayerRowBorder]}
+                >
+                  {/* accent bar */}
+                  <View style={[s.accentBar, isNext && s.accentBarActive]} />
+
+                  <Text style={[s.prayerName, isNext && s.prayerNameActive]}>
+                    {displayName}
                   </Text>
-                  
-                  <Feather 
-                    name={reminderMode === 'Auto' ? 'bell' : 'bell-off'} 
-                    size={32} 
-                    color="#fff" 
-                    style={styles.cardBellIcon} 
-                  />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
+
+                  <View style={s.prayerRight}>
+                    <Text style={[s.prayerTime, isNext && s.prayerTimeActive]}>
+                      {timeStr}
+                    </Text>
+                    <Feather
+                      name={reminderMode === 'Auto' ? 'bell' : 'bell-off'}
+                      size={16}
+                      color={isNext ? C.accent : C.textMut}
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </ScrollView>
       ) : (
-        <Text style={styles.infoText}>Waiting for location data...</Text>
+        <Text style={s.emptyText}>Waiting for location…</Text>
       )}
 
+      {/* ── Time edit modal ── */}
       <Modal visible={!!selectedPrayer} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Set {selectedPrayer} Time</Text>
-            <Text style={styles.modalLabel}>Enter time (24-hour format):</Text>
-            
-            <View style={styles.timeInputRow}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Set {selectedPrayer}</Text>
+            <Text style={s.modalSubtitle}>{use24HourClock ? '24-hour format' : '12-hour format'}</Text>
+
+            <View style={s.timeRow}>
               <TextInput
-                style={[styles.modalInput, styles.timeInput]}
+                style={[s.timeInput, s.timeInputField]}
                 keyboardType="numeric"
                 value={tempHours}
                 onChangeText={setTempHours}
                 placeholder="HH"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={C.textMut}
                 maxLength={2}
               />
-              <Text style={styles.timeColon}>:</Text>
+              <Text style={s.timeColon}>:</Text>
               <TextInput
-                style={[styles.modalInput, styles.timeInput]}
+                style={[s.timeInput, s.timeInputField]}
                 keyboardType="numeric"
                 value={tempMinutes}
                 onChangeText={setTempMinutes}
                 placeholder="MM"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={C.textMut}
                 maxLength={2}
               />
-              
               {!use24HourClock && (
-                <View style={styles.amPmContainer}>
-                  <TouchableOpacity 
-                    style={[styles.amPmButton, tempAmPm === 'AM' && styles.amPmActive]}
-                    onPress={() => setTempAmPm('AM')}
-                  >
-                    <Text style={[styles.amPmText, tempAmPm === 'AM' && styles.amPmTextActive]}>AM</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.amPmButton, tempAmPm === 'PM' && styles.amPmActive]}
-                    onPress={() => setTempAmPm('PM')}
-                  >
-                    <Text style={[styles.amPmText, tempAmPm === 'PM' && styles.amPmTextActive]}>PM</Text>
-                  </TouchableOpacity>
+                <View style={s.ampmCol}>
+                  {(['AM', 'PM'] as const).map(v => (
+                    <TouchableOpacity
+                      key={v}
+                      style={[s.ampmBtn, tempAmPm === v && s.ampmBtnActive]}
+                      onPress={() => setTempAmPm(v)}
+                    >
+                      <Text style={[s.ampmText, tempAmPm === v && s.ampmTextActive]}>{v}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               )}
             </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalButton} onPress={() => setSelectedPrayer(null)}>
-                <Text style={styles.modalButtonText}>CANCEL</Text>
+            <View style={s.modalActions}>
+              <TouchableOpacity style={s.modalCancelBtn} onPress={() => setSelectedPrayer(null)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.modalButtonPrimary]} onPress={saveTime}>
-                <Text style={styles.modalButtonTextPrimary}>SAVE</Text>
+              <TouchableOpacity style={s.modalSaveBtn} onPress={saveTime}>
+                <Text style={s.modalSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -398,268 +373,66 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A', // Deep modern slate
-  },
-  topHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 45,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-  },
-  topHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#F8FAFC',
-    letterSpacing: 2,
-  },
-  iconButton: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    padding: 10,
-    borderRadius: 100,
-  },
-  infoCardWrapper: {
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  infoPanel: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  sunBlock: {
-    alignItems: 'center',
-  },
-  sunLabel: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  sunIcon: {
-    marginVertical: 4,
-  },
-  sunTime: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  centerBlock: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  cityName: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  madhabName: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  zawalTime: {
-    color: '#aaa',
-    fontSize: 14,
-    marginVertical: 4,
-  },
-  nextPrayerText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  modeContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
-    gap: 12,
-  },
-  modeToggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modeLabel: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  syncButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(129, 140, 248, 0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(129, 140, 248, 0.2)',
-  },
-  syncButtonText: {
-    color: '#818cf8',
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  cardsContainer: {
-    flex: 1,
-    paddingHorizontal: 15,
-  },
-  cardWrapper: {
-    marginBottom: 12,
-    borderRadius: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  gradientCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 100,
-  },
-  cardPrayerName: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '300',
-  },
-  cardRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  cardPrayerTime: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: '300',
-  },
-  cardOffsetBadge: {
-    color: '#fff',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  cardBellIcon: {
-    opacity: 0.7,
-  },
-  infoText: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: '#aaa',
-    marginTop: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#0F172A',
-    padding: 24,
-    borderRadius: 24,
-    width: '85%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  modalTitle: {
-    color: '#F8FAFC',
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  modalLabel: {
-    color: '#94a3b8',
-    marginBottom: 16,
-    fontSize: 14,
-  },
-  modalInput: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    color: '#F8FAFC',
-    padding: 16,
-    borderRadius: 16,
-    fontSize: 18,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  timeInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  timeInput: {
-    flex: 1,
-    textAlign: 'center',
-    marginBottom: 0,
-  },
-  timeColon: {
-    color: '#F8FAFC',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 100,
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#818cf8',
-  },
-  modalButtonText: {
-    color: '#cbd5e1',
-    fontWeight: '600',
-  },
-  modalButtonTextPrimary: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  amPmContainer: {
-    flexDirection: 'column',
-    gap: 4,
-    marginLeft: 8,
-  },
-  amPmButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  amPmActive: {
-    backgroundColor: '#818cf8',
-    borderColor: '#818cf8',
-  },
-  amPmText: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  amPmTextActive: {
-    color: '#fff',
-  },
+// ─── Styles ────────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  container:      { flex: 1, backgroundColor: C.bg },
+
+  // Header
+  header:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 52, paddingBottom: 16, paddingHorizontal: 20 },
+  headerTitle:    { fontSize: 15, fontWeight: '600', color: C.textPri, letterSpacing: 0.5 },
+  iconBtn:        { padding: 8 },
+
+  // Info strip
+  infoStrip:      { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 4, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingVertical: 14, paddingHorizontal: 12 },
+  infoCell:       { alignItems: 'center', gap: 4, flex: 1 },
+  infoCellLabel:  { color: C.textMut, fontSize: 11, fontWeight: '500', letterSpacing: 0.5, marginTop: 3 },
+  infoCellValue:  { color: C.textSec, fontSize: 13, fontWeight: '600' },
+  infoDivider:    { width: 1, height: 40, backgroundColor: C.border },
+  infoCenterCell: { flex: 2, alignItems: 'center', gap: 2, paddingHorizontal: 8 },
+  cityName:       { color: C.textPri, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  madhabTag:      { color: C.textMut, fontSize: 11, letterSpacing: 0.5 },
+  nextUp:         { color: C.accent, fontSize: 11, fontWeight: '600', marginTop: 2 },
+
+  // Mode row
+  modeRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
+  modeLabel:      { color: C.textSec, fontSize: 13 },
+  modeRight:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  syncBtn:        { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  syncBtnText:    { color: C.accent, fontSize: 13, fontWeight: '600' },
+
+  // Prayer list
+  listContainer:  { flex: 1, paddingHorizontal: 20 },
+  listCard:       { backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+
+  prayerRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingRight: 20 },
+  prayerRowBorder:{ borderBottomWidth: 1, borderBottomColor: C.border },
+  accentBar:      { width: 3, height: 20, borderRadius: 2, backgroundColor: 'transparent', marginHorizontal: 16 },
+  accentBarActive:{ backgroundColor: C.accent },
+  prayerName:     { flex: 1, fontSize: 16, fontWeight: '400', color: C.textSec, letterSpacing: 0.3 },
+  prayerNameActive:{ color: C.textPri, fontWeight: '600' },
+  prayerRight:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  prayerTime:     { fontSize: 18, fontWeight: '300', color: C.textSec },
+  prayerTimeActive:{ color: C.textPri, fontWeight: '500' },
+
+  emptyText:      { color: C.textSec, textAlign: 'center', marginTop: 40, fontSize: 14 },
+
+  // Modal
+  modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
+  modalBox:       { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 24, width: '82%' },
+  modalTitle:     { color: C.textPri, fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  modalSubtitle:  { color: C.textMut, fontSize: 12, marginBottom: 20 },
+  timeRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 24 },
+  timeInput:      { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 10, color: C.textPri, fontSize: 22, fontWeight: '300', padding: 14, textAlign: 'center' },
+  timeInputField: { flex: 1 },
+  timeColon:      { color: C.textSec, fontSize: 22, fontWeight: '300' },
+  ampmCol:        { gap: 6 },
+  ampmBtn:        { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, borderWidth: 1, borderColor: C.border },
+  ampmBtnActive:  { backgroundColor: C.accent, borderColor: C.accent },
+  ampmText:       { color: C.textMut, fontSize: 12, fontWeight: '600' },
+  ampmTextActive: { color: '#fff' },
+  modalActions:   { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  modalCancelBtn: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, borderWidth: 1, borderColor: C.border },
+  modalCancelText:{ color: C.textSec, fontWeight: '600', fontSize: 14 },
+  modalSaveBtn:   { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, backgroundColor: C.accent },
+  modalSaveText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
