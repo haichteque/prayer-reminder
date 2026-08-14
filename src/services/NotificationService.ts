@@ -92,6 +92,12 @@ export async function schedulePrayerNotifications(
         }
       }
 
+      // Apply per-prayer offset: ring the alarm N minutes before the prayer time
+      const offsetMinutes = offsets[prayer.name] ?? 0;
+      if (offsetMinutes > 0) {
+        alarmTime = new Date(alarmTime.getTime() - offsetMinutes * 60_000);
+      }
+
       // Ensure we don't schedule alarms in the past
       if (alarmTime.getTime() > Date.now()) {
         const trigger: TimestampTrigger = {
@@ -102,27 +108,28 @@ export async function schedulePrayerNotifications(
           },
         };
 
+        const offsetLabel = offsetMinutes > 0 ? ` (in ${offsetMinutes} min)` : '';
+        const modeLabel   = reminderMode === 'Manual' ? ' · Manual' : '';
+
         try {
           await notifee.createTriggerNotification(
             {
               id: `prayer-${prayer.name.toLowerCase()}-${targetDate.toISOString()}`,
-              title: `Time for ${prayer.name} Prayer`,
-              body: reminderMode === 'Auto'
-                ? `It is now time for ${prayer.name}.`
-                : `It is now time for ${prayer.name} (Manual Mode).`,
+              title: `${prayer.name} Prayer${offsetLabel}`,
+              body: offsetMinutes > 0
+                ? `${prayer.name} begins in ${offsetMinutes} minutes.${modeLabel}`
+                : `It is time for ${prayer.name}.${modeLabel}`,
               android: {
                 channelId: channelId,
-                pressAction: {
-                  id: 'default',
-                },
+                pressAction: { id: 'default' },
               },
             },
             trigger
           );
         } catch (err: any) {
-          console.error("Failed to schedule trigger for", prayer.name, err);
+          console.error('Failed to schedule trigger for', prayer.name, err);
           import('react-native').then(({ Alert }) => {
-            Alert.alert("Scheduling Error", err.message);
+            Alert.alert('Scheduling Error', err.message);
           });
         }
       }

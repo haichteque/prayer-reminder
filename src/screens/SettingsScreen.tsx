@@ -25,9 +25,9 @@ export default function SettingsScreen({ navigation }: Props) {
   const {
     madhab, setMadhab,
     use24HourClock, setUse24HourClock,
-    reminderMode, offsets,
+    reminderMode,
     selectedSound, setSelectedSound,
-    location, manualPrayerTimes,
+    location, manualPrayerTimes, offsets,
   } = useSettingsStore();
 
   const [soundObject, setSoundObject] = useState<AudioPlayer | null>(null);
