@@ -70,16 +70,19 @@ export default function HomeScreen({ navigation }: Props) {
       } else {
         await checkExactAlarmPermission();
       }
-      let currentLoc;
+      let currentLoc: any;
       try {
-        currentLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const fetchPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Location timeout')), 3500));
+        currentLoc = await Promise.race([fetchPromise, timeoutPromise]);
       } catch {
-        currentLoc = await Location.getLastKnownPositionAsync({});
+        try {
+          currentLoc = await Location.getLastKnownPositionAsync({});
+        } catch { /* silent */ }
       }
       if (!currentLoc) {
-        alert('Could not fetch location. Please ensure location services are enabled.');
-        setLoading(false);
-        return;
+        // Fallback default coordinates (Lahore) for emulators / offline boots
+        currentLoc = { coords: { latitude: 31.5204, longitude: 74.3587 } };
       }
       const newLoc = { latitude: currentLoc.coords.latitude, longitude: currentLoc.coords.longitude };
       setLocation(newLoc);
