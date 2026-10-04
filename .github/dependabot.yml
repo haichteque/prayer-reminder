@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # Maintain dependencies for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      expo-dependencies:
+        patterns:
+          - "expo*"
+          - "@expo/*"
+      react-dependencies:
+        patterns:
+          - "react*"
+          - "@react-*"
+      test-dependencies:
+        patterns:
+          - "jest*"
+          - "@types/jest*"
+          - "ts-jest*"
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

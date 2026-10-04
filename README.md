@@ -14,6 +14,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)]()
 [![Notifee](https://img.shields.io/badge/Notifee-9.1-blue?logo=android&logoColor=white)]()
 [![Android Ready](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)]()
+[![CI](https://github.com/haichteque/prayer-reminder/actions/workflows/ci.yml/badge.svg)](https://github.com/haichteque/prayer-reminder/actions/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue.svg?logo=dependabot)]()
 
 ---
 
